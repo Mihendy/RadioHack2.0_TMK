@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    networks:
+      - tmk-network
+
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASS}
+    depends_on:
+      - db
+    networks:
+      - tmk-network
+
+  pgadmin:
+    image: dpage/pgadmin4:9.1
+    container_name: pgadmin
+    restart: always
+    env_file: .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+      # SCRIPT_NAME: /pgadmin
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    networks:
+      - tmk-network
+
+  # 3. Сервис фронтенда (пример)
+  # front:
+  #   build: ./frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+
+volumes:
+  postgres_data:
+
+networks:
+  tmk-network:
+    name: tmk-network
+    driver: bridge
