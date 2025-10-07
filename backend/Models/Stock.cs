@@ -26,6 +26,8 @@ public class Stock
     public string RailwayStation { get; set; } = string.Empty;
     public string ConsigneeCode { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public List<Price> Prices { get; set; } = [];
+    [JsonIgnore]
     public List<Remnant> Remnants { get; set; } = [];
 }

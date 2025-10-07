@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace backend.Models;
 
@@ -11,6 +12,9 @@ public class Remnant
     public decimal InStockM { get; set; }
     public decimal AvgTubeLength { get; set; }
     public decimal AvgTubeWeight { get; set; }
+
+    [JsonIgnore]
     public Nomenclature? Nomenclature { get; set; }
+    [JsonIgnore]
     public Stock? Stock { get; set; }
 }

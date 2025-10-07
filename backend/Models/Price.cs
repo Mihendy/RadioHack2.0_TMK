@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace backend.Models;
 
@@ -19,6 +20,8 @@ public class Price
     public decimal PriceM2 { get; set; }
     public decimal NDS { get; set; }
 
+    [JsonIgnore]
     public Nomenclature? Nomenclature { get; set; }
+    [JsonIgnore]
     public Stock? Stock { get; set; }
 }
