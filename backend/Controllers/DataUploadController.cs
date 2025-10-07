@@ -1,23 +1,16 @@
 namespace backend.Controllers;
 
-using backend.Data;
-using backend.Dtos;
-using backend.Models;
+using Data;
+using Dtos;
+using Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 [ApiController]
 [Route("api/upload")]
-public class DataUploadController : ControllerBase
+public class DataUploadController(AppDbContext db) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public DataUploadController(AppDbContext db)
-    {
-        _db = db;
-    }
-
     [HttpPost("types")]
     public async Task<IActionResult> SyncTypes([FromBody] PipeTypeUploadDto dto)
     {
@@ -25,10 +18,10 @@ public class DataUploadController : ControllerBase
         if (types == null || types.Count == 0)
             return BadRequest("No types provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            var existingTypes = await _db.PipeTypes.ToListAsync();
+            var existingTypes = await db.PipeTypes.ToListAsync();
             var incomingIds = types.Select(t => t.IDType).ToHashSet();
 
             // Добавляем новые
@@ -54,12 +47,12 @@ public class DataUploadController : ControllerBase
                 .ToList();
 
             if (toDelete.Count > 0)
-                _db.PipeTypes.RemoveRange(toDelete);
+                db.PipeTypes.RemoveRange(toDelete);
 
             if (toAdd.Count > 0)
-                _db.PipeTypes.AddRange(toAdd);
+                db.PipeTypes.AddRange(toAdd);
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new
@@ -91,10 +84,10 @@ public class DataUploadController : ControllerBase
         if (stocks == null || stocks.Count == 0)
             return BadRequest("No stocks provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            var existingStocks = await _db.Stocks.ToListAsync();
+            var existingStocks = await db.Stocks.ToListAsync();
 
             var incomingIds = stocks.Select(s => s.IDStock).ToHashSet();
 
@@ -149,12 +142,12 @@ public class DataUploadController : ControllerBase
                 .ToList();
 
             if (toDelete.Count > 0)
-                _db.Stocks.RemoveRange(toDelete);
+                db.Stocks.RemoveRange(toDelete);
 
             if (toAdd.Count > 0)
-                _db.Stocks.AddRange(toAdd);
+                db.Stocks.AddRange(toAdd);
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new
@@ -186,10 +179,10 @@ public class DataUploadController : ControllerBase
         if (nomenclature == null || nomenclature.Count == 0)
             return BadRequest("No nomenclature provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            var existingNomenclature = await _db.Nomenclatures.ToListAsync();
+            var existingNomenclature = await db.Nomenclatures.ToListAsync();
             var incomingIds = nomenclature.Select(n => n.ID).ToHashSet();
 
             // Добавляем новые
@@ -239,12 +232,12 @@ public class DataUploadController : ControllerBase
                 .ToList();
 
             if (toDelete.Count > 0)
-                _db.Nomenclatures.RemoveRange(toDelete);
+                db.Nomenclatures.RemoveRange(toDelete);
 
             if (toAdd.Count > 0)
-                _db.Nomenclatures.AddRange(toAdd);
+                db.Nomenclatures.AddRange(toAdd);
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new
@@ -276,10 +269,10 @@ public class DataUploadController : ControllerBase
         if (prices == null || prices.Count == 0)
             return BadRequest("No prices provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            var existingPrices = await _db.Prices.ToListAsync();
+            var existingPrices = await db.Prices.ToListAsync();
             var incomingIds = prices.Select(p => p.ID).ToHashSet();
 
             var toAdd = prices
@@ -324,12 +317,12 @@ public class DataUploadController : ControllerBase
                 .ToList();
 
             if (toDelete.Count > 0)
-                _db.Prices.RemoveRange(toDelete);
+                db.Prices.RemoveRange(toDelete);
 
             if (toAdd.Count > 0)
-                _db.Prices.AddRange(toAdd);
+                db.Prices.AddRange(toAdd);
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new
@@ -361,10 +354,10 @@ public class DataUploadController : ControllerBase
         if (remnants == null || remnants.Count == 0)
             return BadRequest("No remnants provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
-            var existingRemnants = await _db.Remnants.ToListAsync();
+            var existingRemnants = await db.Remnants.ToListAsync();
             var incomingIds = remnants.Select(r => r.ID).ToHashSet();
 
             // Добавляем новые
@@ -398,12 +391,12 @@ public class DataUploadController : ControllerBase
                 .ToList();
 
             if (toDelete.Count > 0)
-                _db.Remnants.RemoveRange(toDelete);
+                db.Remnants.RemoveRange(toDelete);
 
             if (toAdd.Count > 0)
-                _db.Remnants.AddRange(toAdd);
+                db.Remnants.AddRange(toAdd);
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new

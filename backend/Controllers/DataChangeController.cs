@@ -1,23 +1,16 @@
 namespace backend.Controllers;
 
-using backend.Data;
-using backend.Dtos;
-using backend.Models;
+using Data;
+using Dtos;
+using Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 [ApiController]
 [Route("api/delta")]
-public class DataDeltaController : ControllerBase
+public class DataDeltaController(AppDbContext db) : ControllerBase
 {
-    private readonly AppDbContext _db;
-
-    public DataDeltaController(AppDbContext db)
-    {
-        _db = db;
-    }
-
     [HttpPost("prices")]
     public async Task<IActionResult> DeltaPrices([FromBody] PriceTypeUploadDto dto)
     {
@@ -25,12 +18,12 @@ public class DataDeltaController : ControllerBase
         if (deltas == null || deltas.Count == 0)
             return BadRequest("No price deltas provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
             // загружаем все существующие цены по входящим ID, чтобы не делать N запросов
             var ids = deltas.Select(d => d.ID).ToHashSet();
-            var existingPrices = await _db.Prices
+            var existingPrices = await db.Prices
                 .Where(p => ids.Contains(p.ID))
                 .ToDictionaryAsync(p => p.ID);
 
@@ -72,11 +65,11 @@ public class DataDeltaController : ControllerBase
                         PriceM2 = delta.PriceM2,
                         NDS = delta.NDS
                     };
-                    _db.Prices.Add(newPrice);
+                    db.Prices.Add(newPrice);
                 }
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new { updated = deltas.Count });
@@ -103,12 +96,12 @@ public class DataDeltaController : ControllerBase
         if (deltas == null || deltas.Count == 0)
             return BadRequest("No remnant deltas provided");
 
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        await using var transaction = await db.Database.BeginTransactionAsync();
         try
         {
             // загружаем все существующие цены по входящим ID, чтобы не делать N запросов
             var ids = deltas.Select(d => d.ID).ToHashSet();
-            var existingRemnants = await _db.Remnants
+            var existingRemnants = await db.Remnants
                 .Where(r => ids.Contains(r.ID))
                 .ToDictionaryAsync(r => r.ID);
 
@@ -136,11 +129,11 @@ public class DataDeltaController : ControllerBase
                         AvgTubeLength = delta.AvgTubeLength,
                         AvgTubeWeight = delta.AvgTubeWeight,
                     };
-                    _db.Remnants.Add(newRemnant);
+                    db.Remnants.Add(newRemnant);
                 }
             }
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
 
             return Ok(new { updated = deltas.Count });
@@ -159,6 +152,5 @@ public class DataDeltaController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
-
 
 }
