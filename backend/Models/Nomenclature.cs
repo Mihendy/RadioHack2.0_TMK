@@ -20,7 +20,7 @@ public class Nomenclature
     public int Status { get; set; }
     public double Koef { get; set; }
 
-    public PipeType PipeType { get; set; } = null!;
+    public PipeType? PipeType { get; set; }
     public List<Price> Prices { get; set; } = [];
     public List<Remnant> Remnants { get; set; } = [];
 }

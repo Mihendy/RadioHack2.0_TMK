@@ -12,7 +12,7 @@ public class OrderItem
     public decimal QuantityInTons { get; set; }
     public decimal QuantityInMeters { get; set; }
 
-    public Order Order { get; set; } = null!;
-    public Nomenclature Nomenclature { get; set; } = null!;
-    public Stock Stock { get; set; } = null!;
+    public Order? Order { get; set; }
+    public Nomenclature? Nomenclature { get; set; }
+    public Stock? Stock { get; set; }
 }

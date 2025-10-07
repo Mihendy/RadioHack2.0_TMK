@@ -11,6 +11,6 @@ public class Remnant
     public decimal InStockM { get; set; }
     public decimal AvgTubeLength { get; set; }
     public decimal AvgTubeWeight { get; set; }
-    public Nomenclature Nomenclature { get; set; } = null!;
-    public Stock Stock { get; set; } = null!;
+    public Nomenclature? Nomenclature { get; set; }
+    public Stock? Stock { get; set; }
 }

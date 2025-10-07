@@ -19,6 +19,6 @@ public class Price
     public decimal PriceM2 { get; set; }
     public decimal NDS { get; set; }
 
-    public Nomenclature Nomenclature { get; set; } = null!;
-    public Stock Stock { get; set; } = null!;
+    public Nomenclature? Nomenclature { get; set; }
+    public Stock? Stock { get; set; }
 }
