@@ -105,7 +105,20 @@ public class DataUploadController : ControllerBase
                 {
                     IDStock = n.IDStock,
                     City = n.City,
-                    StockName = n.StockName
+                    StockName = n.StockName,
+                    Address = n.Address,
+                    Schedule = n.Schedule,
+                    IDDivision = n.IDDivision,
+                    CashPayment = n.CashPayment,
+                    CardPayment = n.CardPayment,
+                    FIASId = n.FIASId,
+                    OwnerInn = n.OwnerInn,
+                    OwnerKpp = n.OwnerKpp,
+                    OwnerFullName = n.OwnerFullName,
+                    OwnerShortName = n.OwnerShortName,
+                    RailwayStation = n.RailwayStation,
+                    ConsigneeCode = n.ConsigneeCode,
+
                 })
                 .ToList();
 
@@ -115,6 +128,19 @@ public class DataUploadController : ControllerBase
                 var incoming = stocks.First(s => s.IDStock == existing.IDStock);
                 existing.City = incoming.City;
                 existing.StockName = incoming.StockName;
+                existing.StockName = incoming.StockName;
+                existing.Address = incoming.Address;
+                existing.Schedule = incoming.Schedule;
+                existing.IDDivision = incoming.IDDivision;
+                existing.CashPayment = incoming.CashPayment;
+                existing.CardPayment = incoming.CardPayment;
+                existing.FIASId = incoming.FIASId;
+                existing.OwnerInn = incoming.OwnerInn;
+                existing.OwnerKpp = incoming.OwnerKpp;
+                existing.OwnerFullName = incoming.OwnerFullName;
+                existing.OwnerShortName = incoming.OwnerShortName;
+                existing.RailwayStation = incoming.RailwayStation;
+                existing.ConsigneeCode = incoming.ConsigneeCode;
             }
 
             // Удаляем те, которых нет в новых данных
