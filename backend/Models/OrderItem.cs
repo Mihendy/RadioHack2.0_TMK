@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace backend.Models;
 
@@ -12,7 +13,10 @@ public class OrderItem
     public decimal QuantityInTons { get; set; }
     public decimal QuantityInMeters { get; set; }
 
+    [JsonIgnore]
     public Order? Order { get; set; }
+    [JsonIgnore]
     public Nomenclature? Nomenclature { get; set; }
+    [JsonIgnore]
     public Stock? Stock { get; set; }
 }
