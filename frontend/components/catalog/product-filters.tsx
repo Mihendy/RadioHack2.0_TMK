@@ -1,0 +1,237 @@
+"use client"
+
+import type { FilterState, Product } from "@/lib/types"
+import { getUniqueValues } from "@/lib/utils/data-utils"
+import { mockTypes, mockStocks } from "@/lib/mock-data"
+import { FilterSection } from "@/components/ui/filter-section"
+import { CheckboxFilter } from "@/components/ui/checkbox-filter"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
+import { Search, RotateCcw } from "lucide-react"
+
+interface ProductFiltersProps {
+  filters: FilterState
+  onFiltersChange: (filters: FilterState) => void
+  products: Product[]
+  diameterRange: [number, number]
+  thicknessRange: [number, number]
+  onReset?: () => void
+}
+
+export function ProductFilters({
+  filters,
+  onFiltersChange,
+  products,
+  diameterRange,
+  thicknessRange,
+  onReset,
+}: ProductFiltersProps) {
+  const warehouses = mockStocks.map((s) => s.Stock)
+  const productTypes = mockTypes.map((t) => t.Type)
+  const gostOptions = getUniqueValues(products, "Gost")
+  const steelGradeOptions = getUniqueValues(products, "SteelGrade")
+
+  const hasActiveFilters =
+    filters.warehouse.length > 0 ||
+    filters.productType.length > 0 ||
+    filters.gost.length > 0 ||
+    filters.steelGrade.length > 0 ||
+    filters.search !== "" ||
+    filters.diameterRange[0] !== diameterRange[0] ||
+    filters.diameterRange[1] !== diameterRange[1] ||
+    filters.thicknessRange[0] !== thicknessRange[0] ||
+    filters.thicknessRange[1] !== thicknessRange[1]
+
+  return (
+    <div className="space-y-0">
+      {/* Search */}
+      <FilterSection title="Поиск" defaultOpen={true}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="ID или название..."
+            value={filters.search}
+            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+            className="pl-9 h-9"
+          />
+        </div>
+      </FilterSection>
+
+      {/* Warehouse */}
+      <FilterSection title="Склад">
+        <CheckboxFilter
+          options={warehouses}
+          selected={filters.warehouse}
+          onChange={(warehouse) => onFiltersChange({ ...filters, warehouse })}
+        />
+      </FilterSection>
+
+      {/* Product Type */}
+      <FilterSection title="Тип продукции">
+        <CheckboxFilter
+          options={productTypes}
+          selected={filters.productType}
+          onChange={(productType) => onFiltersChange({ ...filters, productType })}
+        />
+      </FilterSection>
+
+      {/* Diameter */}
+      <FilterSection title="Диаметр" defaultOpen={true}>
+        <div className="space-y-3 pl-2">
+          <Slider
+            min={diameterRange[0]}
+            max={diameterRange[1]}
+            step={1}
+            value={filters.diameterRange}
+            onValueChange={(value) => onFiltersChange({ ...filters, diameterRange: value as [number, number] })}
+            className="w-full"
+          />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">От</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={diameterRange[0]}
+                  max={diameterRange[1]}
+                  value={filters.diameterRange[0]}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? diameterRange[0] : Number(e.target.value)
+                    onFiltersChange({ ...filters, diameterRange: [value, filters.diameterRange[1]] })
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.max(
+                      diameterRange[0],
+                      Math.min(Number(e.target.value) || diameterRange[0], filters.diameterRange[1]),
+                    )
+                    onFiltersChange({ ...filters, diameterRange: [value, filters.diameterRange[1]] })
+                  }}
+                  className="h-9 text-sm"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">мм</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">До</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={diameterRange[0]}
+                  max={diameterRange[1]}
+                  value={filters.diameterRange[1]}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? diameterRange[1] : Number(e.target.value)
+                    onFiltersChange({ ...filters, diameterRange: [filters.diameterRange[0], value] })
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.min(
+                      diameterRange[1],
+                      Math.max(Number(e.target.value) || diameterRange[1], filters.diameterRange[0]),
+                    )
+                    onFiltersChange({ ...filters, diameterRange: [filters.diameterRange[0], value] })
+                  }}
+                  className="h-9 text-sm"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">мм</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FilterSection>
+
+      {/* Thickness */}
+      <FilterSection title="Толщина стенки" defaultOpen={true}>
+        <div className="space-y-3 pl-2">
+          <Slider
+            min={thicknessRange[0]}
+            max={thicknessRange[1]}
+            step={0.5}
+            value={filters.thicknessRange}
+            onValueChange={(value) => onFiltersChange({ ...filters, thicknessRange: value as [number, number] })}
+            className="w-full"
+          />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">От</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={thicknessRange[0]}
+                  max={thicknessRange[1]}
+                  step={0.5}
+                  value={filters.thicknessRange[0]}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? thicknessRange[0] : Number(e.target.value)
+                    onFiltersChange({ ...filters, thicknessRange: [value, filters.thicknessRange[1]] })
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.max(
+                      thicknessRange[0],
+                      Math.min(Number(e.target.value) || thicknessRange[0], filters.thicknessRange[1]),
+                    )
+                    onFiltersChange({ ...filters, thicknessRange: [value, filters.thicknessRange[1]] })
+                  }}
+                  className="h-9 text-sm"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">мм</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">До</label>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={thicknessRange[0]}
+                  max={thicknessRange[1]}
+                  step={0.5}
+                  value={filters.thicknessRange[1]}
+                  onChange={(e) => {
+                    const value = e.target.value === "" ? thicknessRange[1] : Number(e.target.value)
+                    onFiltersChange({ ...filters, thicknessRange: [filters.thicknessRange[0], value] })
+                  }}
+                  onBlur={(e) => {
+                    const value = Math.min(
+                      thicknessRange[1],
+                      Math.max(Number(e.target.value) || thicknessRange[1], filters.thicknessRange[0]),
+                    )
+                    onFiltersChange({ ...filters, thicknessRange: [filters.thicknessRange[0], value] })
+                  }}
+                  className="h-9 text-sm"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">мм</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FilterSection>
+
+      {/* GOST */}
+      <FilterSection title="ГОСТ">
+        <CheckboxFilter
+          options={gostOptions}
+          selected={filters.gost}
+          onChange={(gost) => onFiltersChange({ ...filters, gost })}
+        />
+      </FilterSection>
+
+      {/* Steel Grade */}
+      <FilterSection title="Марка стали">
+        <CheckboxFilter
+          options={steelGradeOptions}
+          selected={filters.steelGrade}
+          onChange={(steelGrade) => onFiltersChange({ ...filters, steelGrade })}
+        />
+      </FilterSection>
+
+      {hasActiveFilters && onReset && (
+        <div className="pt-4 pb-2">
+          <Button onClick={onReset} className="w-full bg-[#EE742D] hover:bg-[#EE742D]/90 text-white">
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Сбросить фильтры
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}

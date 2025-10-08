@@ -21,8 +21,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: always
-    ports:
-      - "8080:8080"
     env_file:
       - .env
     environment:
@@ -34,6 +32,8 @@ services:
       JWT__ISSUER: "MyApp"
       JWT__AUDIENCE: "MyAppUsers"
       JWT__EXPIRESMINUTES: "120"
+    ports:
+      - "8080:8080"
     depends_on:
       - db
     networks:
@@ -61,13 +61,26 @@ services:
     networks:
       - tmk-network
 
-  # 3. Сервис фронтенда (пример)
-  # front:
-  #   build: ./frontend
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - backend
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    networks:
+      - tmk-network
+
+  nginx:
+    image: nginx:1.25
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - tmk-network
 
 volumes:
   postgres_data:

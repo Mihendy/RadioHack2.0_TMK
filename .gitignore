@@ -25,3 +25,5 @@ remnants*.json
 stocks*.json
 
 init_data.py
+
+node_modules/
