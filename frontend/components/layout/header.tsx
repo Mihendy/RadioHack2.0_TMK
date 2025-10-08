@@ -19,8 +19,6 @@ export function Header() {
             <Image
               src="/logo.png"
               alt="TMK Logo"
-              width={100}
-              height={50}
               className="object-contain"
               priority // Логотип загружается первым
             />

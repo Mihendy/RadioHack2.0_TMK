@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { createContext, useContext, useState, useEffect } from "react";
-// token is read from localStorage; avoid using Telegram WebApp typings here
 import type { CartItem, Product, UnitType } from "../types";
 
 interface CartContextType {
@@ -22,7 +21,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [syncedWithServer, setSyncedWithServer] = useState(false);
 
-  // Загружаем корзину из localStorage при монтировании
   useEffect(() => {
     const savedCart = localStorage.getItem("pipe-cart");
     if (savedCart) {
@@ -33,40 +31,62 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // If token present (from localStorage), try to sync with backend
     const token = localStorage.getItem("token");
-    if (token) {
-      fetch("/api/cart", {
-        headers: { Authorization: `Bearer ${token}` },
+    if (!token) return; // безопасно не вызывать сервер без токена
+
+    fetch("/api/cart", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          console.warn("Failed to sync cart: status", r.status);
+          return null; // безопасно вернуть null
+        }
+        try {
+          return await r.json();
+        } catch {
+          console.warn("Failed to parse cart JSON");
+          return null;
+        }
       })
-        .then((r) => r.json())
-        .then((data) => {
-          if (data && data.items) {
-            const serverItems: CartItem[] = data.items.map((it: any) => ({
-              product: {
-                ...it.Nomenclature,
-                price: undefined,
-              },
-              quantity: it.QuantityInMeters || it.QuantityInTons || 0,
-              unit: it.QuantityInMeters ? "M" : "T",
-              serverId: it.ID,
-            }));
-            setItems(serverItems);
-            setSyncedWithServer(true);
-          }
-        })
-        .catch((e) => console.warn("Failed to sync cart from server", e));
-    }
+      .then((data) => {
+        if (data?.items) {
+          const serverItems: CartItem[] = data.items.map((it: any) => ({
+            product: { ...it.Nomenclature, price: undefined },
+            quantity: it.QuantityInMeters || it.QuantityInTons || 0,
+            unit: it.QuantityInMeters ? "M" : "T",
+            serverId: it.ID,
+          }));
+          setItems(serverItems);
+          setSyncedWithServer(true);
+        }
+      })
+      .catch((e) => console.warn("Failed to sync cart from server", e));
   }, []);
 
-  // Сохраняем корзину в localStorage при изменении
   useEffect(() => {
     localStorage.setItem("pipe-cart", JSON.stringify(items));
   }, [items]);
 
   const addItem = (product: Product, quantity: number, unit: UnitType) => {
-    // If synced with server or token present, POST to /api/cart/items
     const token = localStorage.getItem("token");
+
+    const addToLocal = (serverId?: string) => {
+      setItems((prev) => {
+        const index = prev.findIndex((item) => item.product.ID === product.ID);
+        if (index >= 0) {
+          const updated = [...prev];
+          updated[index] = {
+            ...updated[index],
+            quantity: updated[index].quantity + quantity,
+            unit,
+            serverId: serverId || updated[index].serverId,
+          };
+          return updated;
+        }
+        return [...prev, { product, quantity, unit, serverId }];
+      });
+    };
 
     if (token || syncedWithServer) {
       const body = {
@@ -83,83 +103,51 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify(body),
       })
-        .then((r) => r.json())
-          .then((created) => {
-            setItems((prev: CartItem[]) => {
-              const existingIndex = prev.findIndex((item: CartItem) => item.product.ID === product.ID);
-              if (existingIndex >= 0) {
-                const updated = [...prev];
-                updated[existingIndex] = {
-                  ...updated[existingIndex],
-                  quantity: updated[existingIndex].quantity + quantity,
-                  unit,
-                  serverId: created.ID,
-                };
-                return updated;
-              }
-              return [...prev, { product, quantity, unit, serverId: created.ID }];
-            });
-          })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("Failed to add item");
+          const created = await r.json();
+          addToLocal(created?.ID);
+        })
         .catch((e) => {
-          console.warn("Failed to add item to server cart, falling back to local", e);
-          // fallback to local
-          setItems((prev: CartItem[]) => {
-            const existingIndex = prev.findIndex((item: CartItem) => item.product.ID === product.ID);
-            if (existingIndex >= 0) {
-              const updated = [...prev];
-              updated[existingIndex] = {
-                ...updated[existingIndex],
-                quantity: updated[existingIndex].quantity + quantity,
-                unit,
-              };
-              return updated;
-            }
-            return [...prev, { product, quantity, unit }];
-          });
+          console.warn("Failed to add item to server, fallback to local", e);
+          addToLocal();
         });
       return;
     }
 
-    // local fallback
-    setItems((prev: CartItem[]) => {
-      const existingIndex = prev.findIndex((item: CartItem) => item.product.ID === product.ID);
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + quantity,
-          unit,
-        };
-        return updated;
-      }
-      return [...prev, { product, quantity, unit }];
-    });
+    addToLocal();
   };
 
   const removeItem = (productId: string) => {
     const token = localStorage.getItem("token");
+    const item = items.find((i) => i.product.ID === productId);
 
-  const item = items.find((i: CartItem) => i.product.ID === productId);
+    const removeFromLocal = () => setItems((prev) => prev.filter((i) => i.product.ID !== productId));
+
     if (token && item?.serverId) {
       fetch(`/api/cart/items/${item.serverId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
-        .then(() => setItems((prev: CartItem[]) => prev.filter((it: CartItem) => it.product.ID !== productId)))
+        .then(() => removeFromLocal())
         .catch((e) => {
           console.warn("Failed to remove item on server, fallback to local", e);
-          setItems((prev: CartItem[]) => prev.filter((it: CartItem) => it.product.ID !== productId));
+          removeFromLocal();
         });
       return;
     }
 
-    setItems((prev: CartItem[]) => prev.filter((item: CartItem) => item.product.ID !== productId));
+    removeFromLocal();
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
     const token = localStorage.getItem("token");
+    const item = items.find((i) => i.product.ID === productId);
 
-  const item = items.find((i: CartItem) => i.product.ID === productId);
+    const updateLocal = () => {
+      setItems((prev) => prev.map((i) => (i.product.ID === productId ? { ...i, quantity } : i)));
+    };
+
     if (token && item?.serverId) {
       const body = {
         NomenclatureID: item.product.ID,
@@ -172,38 +160,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       })
-        .then(() => setItems((prev: CartItem[]) => prev.map((it: CartItem) => (it.product.ID === productId ? { ...it, quantity } : it))))
+        .then(() => updateLocal())
         .catch((e) => {
           console.warn("Failed to update quantity on server, fallback to local", e);
-          setItems((prev: CartItem[]) => prev.map((it: CartItem) => (it.product.ID === productId ? { ...it, quantity } : it)));
+          updateLocal();
         });
       return;
     }
 
-    setItems((prev: CartItem[]) => prev.map((item: CartItem) => (item.product.ID === productId ? { ...item, quantity } : item)));
+    updateLocal();
   };
 
   const updateUnit = (productId: string, unit: UnitType) => {
-    setItems((prev: CartItem[]) => prev.map((item: CartItem) => (item.product.ID === productId ? { ...item, unit } : item)));
+    setItems((prev) => prev.map((item) => (item.product.ID === productId ? { ...item, unit } : item)));
   };
 
   const clearCart = () => setItems([]);
 
   const itemCount = items.length;
-  const totalItems = items.reduce((sum: number, item: CartItem) => sum + item.quantity, 0);
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <CartContext.Provider
-      value={{
-        items,
-        addItem,
-        removeItem,
-        updateQuantity,
-        updateUnit,
-        clearCart,
-        itemCount,
-        totalItems,
-      }}
+      value={{ items, addItem, removeItem, updateQuantity, updateUnit, clearCart, itemCount, totalItems }}
     >
       {children}
     </CartContext.Provider>

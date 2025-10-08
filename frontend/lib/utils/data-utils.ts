@@ -1,4 +1,3 @@
-// src/lib/utils/data-utils.ts
 import type { Product, UnitType } from "../types";
 
 /**
@@ -24,48 +23,62 @@ export async function fetchAndSplitProducts() {
 
   const products = (await res.json()) as Product[];
 
-  // Разбиваем на 4 массива
+  // Разбиваем на 4 массива с правильными ключами
   const nomenclature = products.map((p) => ({
-    id: p.ID,
-    idCat: p.IDCat,
-    idType: p.IDType,
-    idTypeNew: p.IDTypeNew,
-    productionType: p.ProductionType,
-    name: p.Name,
-    gost: p.Gost,
-    formOfLength: p.FormOfLength,
-    manufacturer: p.Manufacturer,
-    steelGrade: p.SteelGrade,
-    diameter: p.Diameter,
-    pipeWallThickness: p.PipeWallThickness,
-    status: p.Status,
-    koef: p.Koef,
+    ID: p.id,
+    idCat: p.idCat,
+    idType: p.idType,
+    idTypeNew: p.idTypeNew,
+    ProductionType: p.productionType,
+    Name: p.name,
+    Gost: p.gost,
+    FormOfLength: p.formOfLength,
+    Manufacturer: p.manufacturer,
+    SteelGrade: p.steelGrade,
+    Diameter: p.diameter,
+    PipeWallThickness: p.pipeWallThickness,
+    Status: p.status,
+    Koef: p.koef,
   }));
 
   const prices = products.flatMap((p) =>
-  p.price!!.map((price) => ({
-    ...price,
-    ID: p.ID, // для совместимости со старым кодом
-  }))
-);
+    p.prices?.map((pr) => ({
+      ...pr,
+      ID: p.id,
+      PriceM: pr.priceM,
+      PriceT: pr.priceT,
+      PriceM1: pr.priceM1,
+      PriceT1: pr.priceT1,
+      PriceM2: pr.priceM2,
+      PriceT2: pr.priceT2,
+      PriceLimitM1: pr.priceLimitM1,
+      PriceLimitT1: pr.priceLimitT1,
+      PriceLimitM2: pr.priceLimitM2,
+      PriceLimitT2: pr.priceLimitT2,
+      PriceUpdatedAt: pr.priceUpdatedAt,
+      IDStock: pr.idStock,
+    })) || []
+  );
 
-const remnants = products.flatMap((p) =>
-  p.remnant!!.map((rem) => ({
-    ...rem,
-    ID: p.ID, // для совместимости со старым кодом
-  }))
-);
+  const remnants = products.flatMap((p) =>
+    p.remnants?.map((r) => ({
+      ...r,
+      ID: p.id,
+      InStockM: r.inStockM,
+      InStockT: r.inStockT,
+    })) || []
+  );
 
-const stocks = Array.from(
-  new Map(
-    products.flatMap((p) =>
-      p.price!!.map((pr) => [
-        pr.IDStock,
-        { IDStock: pr.IDStock, name: `Склад ${pr.IDStock}` },
-      ])
-    )
-  ).values()
-);
+  // Получаем актуальные склады с ручки /api/warehouses
+  const stocksRes = await fetch("/api/warehouses", { cache: "no-store" });
+  const warehouses = stocksRes.ok ? await stocksRes.json() : [];
+  const stocks = warehouses.map((w: any) => ({
+    IDStock: w.idStock,
+    Stock: w.Stock,
+    StockName: w.stockName,
+    Address: w.address,
+    Schedule: w.schedule,
+  }));
 
   return { nomenclature, prices, remnants, stocks };
 }
@@ -85,11 +98,9 @@ export function buildProducts({
   stocks: any[];
 }) {
   return nomenclature.map((nom) => {
-    const price = prices.find((p) => p.ID === nom.id);
-    const remnant = remnants.find((r) => r.ID === nom.id);
-    const stock = price
-      ? stocks.find((s) => s.IDStock === price.idStock)
-      : undefined;
+    const price = prices.find((p) => p.ID === nom.ID);
+    const remnant = remnants.find((r) => r.ID === nom.ID);
+    const stock = price ? stocks.find((s) => s.IDStock === price.IDStock) : undefined;
 
     return {
       ...nom,
@@ -101,36 +112,32 @@ export function buildProducts({
 }
 
 /**
- * Расчёт цены с учётом скидок по количеству (тот же)
+ * Расчёт цены с учётом скидок по количеству
  */
 export function calculatePrice(
   product: Product,
   quantity: number,
   unit: UnitType
 ): { basePrice: number; discountedPrice: number; discount: number } {
-  if (!product.price) {
-    return { basePrice: 0, discountedPrice: 0, discount: 0 };
-  }
+  if (!product.price) return { basePrice: 0, discountedPrice: 0, discount: 0 };
 
-  const price = product.price;
+  const priceObj = product.price[0];
+  if (!priceObj) return { basePrice: 0, discountedPrice: 0, discount: 0 };
+
   let unitPrice: number;
   let discountedUnitPrice: number;
 
-const priceObj = product.price[0]; // первый объект массива
-if (!priceObj) return { basePrice: 0, discountedPrice: 0, discount: 0 };
-
-if (unit === "T") {
-  unitPrice = priceObj.PriceT;
-  if (quantity >= priceObj.PriceLimitT2) discountedUnitPrice = priceObj.PriceT2;
-  else if (quantity >= priceObj.PriceLimitT1) discountedUnitPrice = priceObj.PriceT1;
-  else discountedUnitPrice = priceObj.PriceT;
-} else {
-  unitPrice = priceObj.PriceM;
-  if (quantity >= priceObj.PriceLimitM2) discountedUnitPrice = priceObj.PriceM2;
-  else if (quantity >= priceObj.PriceLimitM1) discountedUnitPrice = priceObj.PriceM1;
-  else discountedUnitPrice = priceObj.PriceM;
-}
-
+  if (unit === "T") {
+    unitPrice = priceObj.PriceT;
+    if (quantity >= priceObj.PriceLimitT2) discountedUnitPrice = priceObj.PriceT2;
+    else if (quantity >= priceObj.PriceLimitT1) discountedUnitPrice = priceObj.PriceT1;
+    else discountedUnitPrice = priceObj.PriceT;
+  } else {
+    unitPrice = priceObj.PriceM;
+    if (quantity >= priceObj.PriceLimitM2) discountedUnitPrice = priceObj.PriceM2;
+    else if (quantity >= priceObj.PriceLimitM1) discountedUnitPrice = priceObj.PriceM1;
+    else discountedUnitPrice = priceObj.PriceM;
+  }
 
   const basePrice = unitPrice * quantity;
   const discountedPrice = discountedUnitPrice * quantity;

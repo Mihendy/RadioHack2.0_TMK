@@ -56,12 +56,10 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-center px-4 relative">
         <Link href="/" className="flex items-center justify-center">
-          <div className="flex h-10 items-center justify-center rounded-full bg-[#EE742D] px-8">
+          <div className="flex h-10 items-center justify-center">
             <Image
               src="/logo.png"
               alt="TMK Logo"
-              width={100}
-              height={50}
               className="object-contain"
               priority
             />
