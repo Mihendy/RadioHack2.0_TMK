@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getProducts } from "@/lib/utils/data-utils"
 import { ProductCard } from "@/components/ui/product-card"
 import { Input } from "@/components/ui/input"
@@ -10,10 +10,14 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [allProducts, setAllProducts] = useState<typeof getProducts[]>([])
   const { addItem } = useCart()
   const { toast } = useToast()
 
-  const allProducts = getProducts()
+  // Загружаем продукты асинхронно
+  useEffect(() => {
+    getProducts().then(setAllProducts)
+  }, [])
 
   const searchResults = allProducts.filter((product) => {
     if (!searchQuery) return false

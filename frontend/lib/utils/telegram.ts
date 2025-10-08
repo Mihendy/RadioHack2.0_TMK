@@ -78,7 +78,19 @@ export function getTelegramTheme(): "light" | "dark" {
 
 export function getTelegramUser() {
   const webApp = getTelegramWebApp();
-  return webApp?.initDataUnsafe?.user || null;
+  const user = webApp?.initDataUnsafe?.user;
+
+  if (user) return user;
+
+  return {
+    id: 123456789,
+    first_name: "Test",
+    last_name: "User",
+    username: "test_user",
+    language_code: "ru",
+    allows_write_to_pm: true,
+    is_premium: false,
+  };
 }
 
 export function closeTelegramWebApp() {

@@ -1,11 +1,11 @@
-"use client"; // Компонент работает на клиенте, использует состояние и хуки
+"use client";
 
-import { useState, useMemo } from "react";
-import { getProducts, getRange } from "@/lib/utils/data-utils"; // Получение списка продуктов и диапазонов значений
-import { ProductCard } from "@/components/ui/product-card"; // Карточка товара
-import { ProductFilters } from "@/components/catalog/product-filters"; // Компонент фильтров
-import { ProductSort } from "@/components/catalog/product-sort"; // Компонент сортировки
-import { useCart } from "@/lib/contexts/cart-context"; // Контекст корзины
+import { useState, useEffect, useMemo } from "react";
+import { getProducts, getRange } from "@/lib/utils/data-utils";
+import { ProductCard } from "@/components/ui/product-card";
+import { ProductFilters } from "@/components/catalog/product-filters";
+import { ProductSort } from "@/components/catalog/product-sort";
+import { useCart } from "@/lib/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { Filter, X } from "lucide-react";
 import {
@@ -20,19 +20,26 @@ import { useToast } from "@/hooks/use-toast";
 
 type SortOption = "price-asc" | "price-desc" | "stock" | "updated";
 
-/**
- * ProductCatalog — основной компонент каталога товаров
- * - Отображает фильтры и сортировку
- * - Показывает сетку продуктов
- * - Поддерживает добавление товаров в корзину
- */
 export function ProductCatalog() {
-  const { addItem } = useCart(); // Функция для добавления товара в корзину
-  const { toast } = useToast(); // Для уведомлений
-  const [isFilterOpen, setIsFilterOpen] = useState(false); // Состояние открытия мобильного фильтра
+  const { addItem } = useCart();
+  const { toast } = useToast();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [allProducts, setAllProducts] = useState<Awaited<ReturnType<typeof getProducts>>>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Получаем все продукты и диапазоны для фильтров
-  const allProducts = useMemo(() => getProducts(), []);
+  // Загрузка продуктов
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const products = await getProducts();
+        setAllProducts(products);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
+  }, []);
+
   const diameterRange = useMemo(
     () => getRange(allProducts, "Diameter"),
     [allProducts]
@@ -42,7 +49,6 @@ export function ProductCatalog() {
     [allProducts]
   );
 
-  // Состояние фильтров
   const [filters, setFilters] = useState<FilterState>({
     warehouse: [],
     productType: [],
@@ -53,20 +59,15 @@ export function ProductCatalog() {
     search: "",
   });
 
-  // Состояние сортировки
   const [sortBy, setSortBy] = useState<SortOption>("updated");
 
-  /**
-   * Фильтрация продуктов
-   * - Применяются все выбранные фильтры
-   * - Фильтры по складу, типу продукта, диаметру, толщине, ГОСТу, марке стали и поиску
-   */
+  // Фильтрация продуктов
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
-      if (filters.warehouse.length > 0 && product.stock) {
+      if (filters.warehouse.length && product.stock) {
         if (!filters.warehouse.includes(product.stock.Stock)) return false;
       }
-      if (filters.productType.length > 0) {
+      if (filters.productType.length) {
         if (!filters.productType.includes(product.IDType)) return false;
       }
       if (
@@ -79,10 +80,10 @@ export function ProductCatalog() {
         product.PipeWallThickness > filters.thicknessRange[1]
       )
         return false;
-      if (filters.gost.length > 0) {
+      if (filters.gost.length) {
         if (!filters.gost.includes(product.Gost)) return false;
       }
-      if (filters.steelGrade.length > 0) {
+      if (filters.steelGrade.length) {
         if (!filters.steelGrade.includes(product.SteelGrade)) return false;
       }
       if (filters.search) {
@@ -97,13 +98,9 @@ export function ProductCatalog() {
     });
   }, [allProducts, filters]);
 
-  /**
-   * Сортировка продуктов
-   * - По цене, наличию или дате обновления
-   */
+  // Сортировка продуктов
   const sortedProducts = useMemo(() => {
     const sorted = [...filteredProducts];
-
     switch (sortBy) {
       case "price-asc":
         return sorted.sort(
@@ -128,29 +125,23 @@ export function ProductCatalog() {
     }
   }, [filteredProducts, sortBy]);
 
-  // Добавление товара в корзину с уведомлением
   const handleAddToCart = (product: (typeof sortedProducts)[0]) => {
     addItem(product, 1, "M");
-    toast({
-      title: "Добавлено в корзину",
-      description: product.Name,
-    });
+    toast({ title: "Добавлено в корзину", description: product.Name });
   };
 
-  // Сброс фильтров до начальных значений
   const handleResetFilters = () => {
     setFilters({
       warehouse: [],
       productType: [],
-      diameterRange: diameterRange,
-      thicknessRange: thicknessRange,
+      diameterRange,
+      thicknessRange,
       gost: [],
       steelGrade: [],
       search: "",
     });
   };
 
-  // Проверка наличия активных фильтров
   const hasActiveFilters =
     filters.warehouse.length > 0 ||
     filters.productType.length > 0 ||
@@ -162,9 +153,17 @@ export function ProductCatalog() {
     filters.thicknessRange[0] !== thicknessRange[0] ||
     filters.thicknessRange[1] !== thicknessRange[1];
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-muted-foreground">Загрузка каталога...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Мобильная кнопка фильтров и сортировки */}
+      {/* Мобильная панель фильтров */}
       <div className="flex items-center gap-2">
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetTrigger asChild>
@@ -207,9 +206,8 @@ export function ProductCatalog() {
         </div>
       </div>
 
-      {/* Десктопный макет */}
+      {/* Десктоп */}
       <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
-        {/* Сайдбар фильтров для десктопа */}
         <aside className="hidden lg:block">
           <div className="sticky top-20 space-y-4 rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between">
@@ -237,17 +235,14 @@ export function ProductCatalog() {
           </div>
         </aside>
 
-        {/* Сетка продуктов */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Найдено:{" "}
-              <span className="font-semibold text-foreground">
-                {sortedProducts.length}
-              </span>{" "}
-              товаров
-            </p>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Найдено:{" "}
+            <span className="font-semibold text-foreground">
+              {sortedProducts.length}
+            </span>{" "}
+            товаров
+          </p>
 
           {sortedProducts.length === 0 ? (
             <div className="rounded-lg border bg-card p-12 text-center">

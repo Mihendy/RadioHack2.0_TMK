@@ -8,6 +8,7 @@ export interface Nomenclature {
   ID: string;
   IDCat: string;
   IDType: string;
+  IDTypeNew: string;
   ProductionType: string;
   Name: string;
   Gost: string;
@@ -53,9 +54,9 @@ export interface Stock {
 }
 
 export interface Product extends Nomenclature {
-  price?: Price;
-  remnant?: Remnant;
-  stock?: Stock;
+  price?: Price[];
+  remnant?: Remnant[];
+  stock?: Stock[];
 }
 
 export interface CartItem {
