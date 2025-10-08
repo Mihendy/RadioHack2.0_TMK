@@ -1,28 +1,48 @@
-"use client"
+"use client"; // Компонент работает на клиенте, использует состояние и хуки
 
-import { useState, useMemo } from "react"
-import { getProducts, getRange } from "@/lib/utils/data-utils"
-import { ProductCard } from "@/components/ui/product-card"
-import { ProductFilters } from "@/components/catalog/product-filters"
-import { ProductSort } from "@/components/catalog/product-sort"
-import { useCart } from "@/lib/contexts/cart-context"
-import { Button } from "@/components/ui/button"
-import { Filter, X } from "lucide-react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import type { FilterState } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useMemo } from "react";
+import { getProducts, getRange } from "@/lib/utils/data-utils"; // Получение списка продуктов и диапазонов значений
+import { ProductCard } from "@/components/ui/product-card"; // Карточка товара
+import { ProductFilters } from "@/components/catalog/product-filters"; // Компонент фильтров
+import { ProductSort } from "@/components/catalog/product-sort"; // Компонент сортировки
+import { useCart } from "@/lib/contexts/cart-context"; // Контекст корзины
+import { Button } from "@/components/ui/button";
+import { Filter, X } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import type { FilterState } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
-type SortOption = "price-asc" | "price-desc" | "stock" | "updated"
+type SortOption = "price-asc" | "price-desc" | "stock" | "updated";
 
+/**
+ * ProductCatalog — основной компонент каталога товаров
+ * - Отображает фильтры и сортировку
+ * - Показывает сетку продуктов
+ * - Поддерживает добавление товаров в корзину
+ */
 export function ProductCatalog() {
-  const { addItem } = useCart()
-  const { toast } = useToast()
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const { addItem } = useCart(); // Функция для добавления товара в корзину
+  const { toast } = useToast(); // Для уведомлений
+  const [isFilterOpen, setIsFilterOpen] = useState(false); // Состояние открытия мобильного фильтра
 
-  const allProducts = useMemo(() => getProducts(), [])
-  const diameterRange = useMemo(() => getRange(allProducts, "Diameter"), [allProducts])
-  const thicknessRange = useMemo(() => getRange(allProducts, "PipeWallThickness"), [allProducts])
+  // Получаем все продукты и диапазоны для фильтров
+  const allProducts = useMemo(() => getProducts(), []);
+  const diameterRange = useMemo(
+    () => getRange(allProducts, "Diameter"),
+    [allProducts]
+  );
+  const thicknessRange = useMemo(
+    () => getRange(allProducts, "PipeWallThickness"),
+    [allProducts]
+  );
 
+  // Состояние фильтров
   const [filters, setFilters] = useState<FilterState>({
     warehouse: [],
     productType: [],
@@ -31,90 +51,93 @@ export function ProductCatalog() {
     gost: [],
     steelGrade: [],
     search: "",
-  })
+  });
 
-  const [sortBy, setSortBy] = useState<SortOption>("updated")
+  // Состояние сортировки
+  const [sortBy, setSortBy] = useState<SortOption>("updated");
 
-  // Filter products
+  /**
+   * Фильтрация продуктов
+   * - Применяются все выбранные фильтры
+   * - Фильтры по складу, типу продукта, диаметру, толщине, ГОСТу, марке стали и поиску
+   */
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
-      // Warehouse filter
       if (filters.warehouse.length > 0 && product.stock) {
-        if (!filters.warehouse.includes(product.stock.Stock)) return false
+        if (!filters.warehouse.includes(product.stock.Stock)) return false;
       }
-
-      // Product type filter
       if (filters.productType.length > 0) {
-        if (!filters.productType.includes(product.IDType)) return false
+        if (!filters.productType.includes(product.IDType)) return false;
       }
-
-      // Diameter range filter
-      if (product.Diameter < filters.diameterRange[0] || product.Diameter > filters.diameterRange[1]) {
-        return false
-      }
-
-      // Thickness range filter
+      if (
+        product.Diameter < filters.diameterRange[0] ||
+        product.Diameter > filters.diameterRange[1]
+      )
+        return false;
       if (
         product.PipeWallThickness < filters.thicknessRange[0] ||
         product.PipeWallThickness > filters.thicknessRange[1]
-      ) {
-        return false
-      }
-
-      // GOST filter
+      )
+        return false;
       if (filters.gost.length > 0) {
-        if (!filters.gost.includes(product.Gost)) return false
+        if (!filters.gost.includes(product.Gost)) return false;
       }
-
-      // Steel grade filter
       if (filters.steelGrade.length > 0) {
-        if (!filters.steelGrade.includes(product.SteelGrade)) return false
+        if (!filters.steelGrade.includes(product.SteelGrade)) return false;
       }
-
-      // Search filter
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
+        const searchLower = filters.search.toLowerCase();
         return (
           product.Name.toLowerCase().includes(searchLower) ||
           product.ID.toLowerCase().includes(searchLower) ||
           product.Manufacturer.toLowerCase().includes(searchLower)
-        )
+        );
       }
+      return true;
+    });
+  }, [allProducts, filters]);
 
-      return true
-    })
-  }, [allProducts, filters])
-
-  // Sort products
+  /**
+   * Сортировка продуктов
+   * - По цене, наличию или дате обновления
+   */
   const sortedProducts = useMemo(() => {
-    const sorted = [...filteredProducts]
+    const sorted = [...filteredProducts];
 
     switch (sortBy) {
       case "price-asc":
-        return sorted.sort((a, b) => (a.price?.PriceM || 0) - (b.price?.PriceM || 0))
+        return sorted.sort(
+          (a, b) => (a.price?.PriceM || 0) - (b.price?.PriceM || 0)
+        );
       case "price-desc":
-        return sorted.sort((a, b) => (b.price?.PriceM || 0) - (a.price?.PriceM || 0))
+        return sorted.sort(
+          (a, b) => (b.price?.PriceM || 0) - (a.price?.PriceM || 0)
+        );
       case "stock":
-        return sorted.sort((a, b) => (b.remnant?.InStockT || 0) - (a.remnant?.InStockT || 0))
+        return sorted.sort(
+          (a, b) => (b.remnant?.InStockT || 0) - (a.remnant?.InStockT || 0)
+        );
       case "updated":
         return sorted.sort((a, b) => {
-          const dateA = new Date(a.price?.PriceUpdatedAt || 0).getTime()
-          const dateB = new Date(b.price?.PriceUpdatedAt || 0).getTime()
-          return dateB - dateA
-        })
+          const dateA = new Date(a.price?.PriceUpdatedAt || 0).getTime();
+          const dateB = new Date(b.price?.PriceUpdatedAt || 0).getTime();
+          return dateB - dateA;
+        });
       default:
-        return sorted
+        return sorted;
     }
-  }, [filteredProducts, sortBy])
+  }, [filteredProducts, sortBy]);
 
+  // Добавление товара в корзину с уведомлением
   const handleAddToCart = (product: (typeof sortedProducts)[0]) => {
-    addItem(product, 1, "M")
+    addItem(product, 1, "M");
     toast({
       title: "Добавлено в корзину",
       description: product.Name,
-    })
-  }
+    });
+  };
 
+  // Сброс фильтров до начальных значений
   const handleResetFilters = () => {
     setFilters({
       warehouse: [],
@@ -124,9 +147,10 @@ export function ProductCatalog() {
       gost: [],
       steelGrade: [],
       search: "",
-    })
-  }
+    });
+  };
 
+  // Проверка наличия активных фильтров
   const hasActiveFilters =
     filters.warehouse.length > 0 ||
     filters.productType.length > 0 ||
@@ -136,15 +160,18 @@ export function ProductCatalog() {
     filters.diameterRange[0] !== diameterRange[0] ||
     filters.diameterRange[1] !== diameterRange[1] ||
     filters.thicknessRange[0] !== thicknessRange[0] ||
-    filters.thicknessRange[1] !== thicknessRange[1]
+    filters.thicknessRange[1] !== thicknessRange[1];
 
   return (
     <div className="space-y-4">
-      {/* Mobile filter button and sort */}
+      {/* Мобильная кнопка фильтров и сортировки */}
       <div className="flex items-center gap-2">
         <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" className="flex-1 lg:hidden bg-transparent">
+            <Button
+              variant="outline"
+              className="flex-1 lg:hidden bg-transparent"
+            >
               <Filter className="mr-2 h-4 w-4" />
               Фильтры
               {hasActiveFilters && (
@@ -154,7 +181,10 @@ export function ProductCatalog() {
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetContent
+            side="left"
+            className="w-full sm:max-w-md overflow-y-auto"
+          >
             <SheetHeader>
               <SheetTitle className="font-bold text-center">Фильтры</SheetTitle>
             </SheetHeader>
@@ -171,20 +201,26 @@ export function ProductCatalog() {
           </SheetContent>
         </Sheet>
 
+        {/* Сортировка */}
         <div className="flex-1">
           <ProductSort value={sortBy} onChange={setSortBy} />
         </div>
       </div>
 
-      {/* Desktop layout */}
+      {/* Десктопный макет */}
       <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-6">
-        {/* Desktop filters sidebar */}
+        {/* Сайдбар фильтров для десктопа */}
         <aside className="hidden lg:block">
           <div className="sticky top-20 space-y-4 rounded-lg border bg-card p-4">
             <div className="flex items-center justify-between">
               <h2 className="font-bold flex-1 text-center">Фильтры</h2>
               {hasActiveFilters && (
-                <Button onClick={handleResetFilters} variant="ghost" size="sm" className="absolute right-4">
+                <Button
+                  onClick={handleResetFilters}
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-4"
+                >
                   <X className="mr-1 h-3 w-3" />
                   Сбросить
                 </Button>
@@ -201,30 +237,42 @@ export function ProductCatalog() {
           </div>
         </aside>
 
-        {/* Product grid */}
+        {/* Сетка продуктов */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Найдено: <span className="font-semibold text-foreground">{sortedProducts.length}</span> товаров
+              Найдено:{" "}
+              <span className="font-semibold text-foreground">
+                {sortedProducts.length}
+              </span>{" "}
+              товаров
             </p>
           </div>
 
           {sortedProducts.length === 0 ? (
             <div className="rounded-lg border bg-card p-12 text-center">
               <p className="text-muted-foreground">Товары не найдены</p>
-              <Button onClick={handleResetFilters} variant="outline" className="mt-4 bg-transparent">
+              <Button
+                onClick={handleResetFilters}
+                variant="outline"
+                className="mt-4 bg-transparent"
+              >
                 Сбросить фильтры
               </Button>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {sortedProducts.map((product) => (
-                <ProductCard key={product.ID} product={product} onAddToCart={() => handleAddToCart(product)} />
+                <ProductCard
+                  key={product.ID}
+                  product={product}
+                  onAddToCart={() => handleAddToCart(product)}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }

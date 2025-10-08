@@ -1,11 +1,24 @@
-'use client'
+"use client";
 
-import * as React from 'react'
-import {
-  ThemeProvider as NextThemesProvider,
-  type ThemeProviderProps,
-} from 'next-themes'
+import * as React from "react";
+import { useEffect } from "react";
+import { CartProvider } from "@/lib/contexts/cart-context";
+import { ThemeProvider as CustomThemeProvider } from "@/lib/contexts/theme-context";
+import { initTelegramWebApp } from "@/lib/utils/telegram";
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+interface ProvidersProps {
+  children: React.ReactNode;
+}
+
+export function Providers({ children }: ProvidersProps) {
+  useEffect(() => {
+    // Инициализация Telegram Web App при первом рендере
+    initTelegramWebApp();
+  }, []);
+
+  return (
+    <CustomThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <CartProvider>{children}</CartProvider>
+    </CustomThemeProvider>
+  );
 }
